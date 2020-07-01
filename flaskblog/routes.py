@@ -8,19 +8,19 @@ from flaskblog import app, bcrypt, db
 posts = [
 	{
 		'title': 'first post - 1',
-		'author': 'wangkui',
+		'author': 'bigwk',
 		'date_posted': 'May 13, 2020',
 		'content': 'this is the first post'
 	},
 		{
 		'title': 'first post - 2',
-		'author': 'wangkui',
+		'author': 'bigwk',
 		'date_posted': 'May 12, 2020',
 		'content': 'this is the second post'
 	},
 		{
 		'title': 'first post - 3',
-		'author': 'wangkui',
+		'author': 'bigwk',
 		'date_posted': 'May 11, 2020',
 		'content': 'this is the third post'
 	}
