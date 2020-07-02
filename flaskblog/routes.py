@@ -1,7 +1,10 @@
+import os
+import secrets
+from PIL import Image
 from flask import render_template, url_for, flash, redirect, request
 from flask_login import login_user, current_user, logout_user, login_required
 
-from flaskblog.forms import RegistrationForm, LoginForm
+from flaskblog.forms import RegistrationForm, LoginForm, UpdateAccountForm
 from flaskblog.models import User, Post
 from flaskblog import app, bcrypt, db
 
@@ -77,7 +80,57 @@ def logout():
 	logout_user()
 	return redirect(url_for('index'))
 
-@app.route('/account')
+def save_img(form_pic):
+	if not del_img():
+		return None
+	random_hex = secrets.token_hex(8)
+	_, file_ext = os.path.splitext(form_pic.filename)
+	img = random_hex + file_ext
+	img_path = os.path.join(app.root_path, 'static/profile_pics', img)
+
+	output_size = (250, 250)
+	i = Image.open(form_pic)
+	i.thumbnail(output_size)
+
+	i.save(img_path)
+	return img
+
+def del_img():
+	current_user_img = os.path.join(app.root_path, 'static/profile_pics', current_user.image_file)
+	try:
+		os.remove(current_user_img)
+	except Exception as e:
+		if type(e) is FileNotFoundError:
+			return True
+		return False
+	else:
+		return True
+	
+
+@app.route('/account', methods=['GET', 'POST'])
 @login_required
 def account():
-	return render_template('account.html', title=current_user.username)
+	form = UpdateAccountForm()
+	if form.validate_on_submit():
+		if form.image.data:
+			image_file = save_img(form.image.data)
+			if image_file == None:
+				flash('Upload image failed. Please try again!', 'danger')
+				return redirect(url_for('account'))
+			current_user.image_file = image_file
+		current_user.username = form.username.data
+		current_user.email = form.email.data
+		try:
+			db.session.commit()
+		except Exception as e:
+			db.session.rollback()
+			flash(f'update account error {e}', 'danger')
+		else:
+			flash(f'update account success', 'success')
+		finally:
+			return redirect(url_for('account'))
+	elif request.method == 'GET':
+		form.username.data = current_user.username
+		form.email.data = current_user.email
+	image_file = url_for('static', filename='profile_pics/' + current_user.image_file)
+	return render_template('account.html', title=current_user.username, image_file=image_file, form=form)
