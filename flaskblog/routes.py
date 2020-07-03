@@ -1,14 +1,16 @@
 import os
 import secrets
 from PIL import Image
-from flask import render_template, url_for, flash, redirect, request
+from flask import render_template, url_for, flash, redirect, request, abort
 from flask_login import login_user, current_user, logout_user, login_required
 
-from flaskblog.forms import RegistrationForm, LoginForm, UpdateAccountForm
+from datetime import datetime
+
+from flaskblog.forms import RegistrationForm, LoginForm, UpdateAccountForm, CreatePostForm
 from flaskblog.models import User, Post
 from flaskblog import app, bcrypt, db
 
-posts = [
+post = [
 	{
 		'title': 'first post - 1',
 		'author': 'bigwk',
@@ -31,6 +33,7 @@ posts = [
 
 @app.route('/')
 def index():
+	posts = Post.query.all()
 	return render_template('home.html', posts=posts)
 
 @app.route('/about')
@@ -81,8 +84,9 @@ def logout():
 	return redirect(url_for('index'))
 
 def save_img(form_pic):
-	if not del_img():
-		return None
+	if current_user.image_file != 'default.jpg':
+		if not del_img():
+			return None
 	random_hex = secrets.token_hex(8)
 	_, file_ext = os.path.splitext(form_pic.filename)
 	img = random_hex + file_ext
@@ -107,16 +111,18 @@ def del_img():
 		return True
 	
 
-@app.route('/account', methods=['GET', 'POST'])
+@app.route('/account/<string:user_name>', methods=['GET', 'POST'])
 @login_required
-def account():
+def account(user_name):
+	if user_name != current_user.username:
+		abort(403)
 	form = UpdateAccountForm()
 	if form.validate_on_submit():
 		if form.image.data:
 			image_file = save_img(form.image.data)
 			if image_file == None:
 				flash('Upload image failed. Please try again!', 'danger')
-				return redirect(url_for('account'))
+				return redirect(url_for('account', user_name=current_user.username))
 			current_user.image_file = image_file
 		current_user.username = form.username.data
 		current_user.email = form.email.data
@@ -128,9 +134,80 @@ def account():
 		else:
 			flash(f'update account success', 'success')
 		finally:
-			return redirect(url_for('account'))
+			return redirect(url_for('account', user_name=current_user.username))
 	elif request.method == 'GET':
 		form.username.data = current_user.username
 		form.email.data = current_user.email
 	image_file = url_for('static', filename='profile_pics/' + current_user.image_file)
 	return render_template('account.html', title=current_user.username, image_file=image_file, form=form)
+
+
+@app.route('/post/new', methods=['GET', 'POST'])
+@login_required
+def create_post():
+	form = CreatePostForm()
+	if form.validate_on_submit():
+		title = form.title.data
+		content = form.content.data
+		author = current_user
+		post = Post(title=title, date_posted=datetime.today().ctime(), content=content, author=author)
+		try:
+			db.session.add(post)
+			db.session.commit()
+		except Exception as e:
+			db.session.rollback()
+			flash(f'create post error {e}', 'danger')
+		else:
+			flash(f'Post {form.title.data} has been created!', 'success')
+			return redirect(url_for('index'))
+	return render_template('create_post.html', title='New Post', form=form, legend='New Post')
+
+@app.route('/post/<int:post_id>')
+@login_required
+def post(post_id):
+	post = Post.query.get_or_404(post_id)
+	return render_template('post.html', title=post.title, post=post)
+
+
+@app.route('/post/<int:post_id>/update', methods=['GET', 'POST'])
+@login_required
+def update_post(post_id):
+	post = Post.query.get_or_404(post_id)
+	if post.author != current_user:
+		abort(403)
+	form = CreatePostForm()
+	if form.validate_on_submit():
+		post.title = form.title.data
+		post.content = form.content.data
+		try:
+			db.session.commit()
+		except Exception as e:
+			db.session.rollback()
+			flash(f'update post error {e}', 'danger')
+		else:
+			flash(f'update post success', 'success')
+		finally:
+			return redirect(url_for('post', post_id=post.id))
+
+	elif request.method == 'GET':
+		form.title.data = post.title
+		form.content.data = post.content
+	return render_template('create_post.html', title=post.title, form=form, legend='Update Post')
+
+@app.route('/post/<int:post_id>/delete', methods=['POST'])
+@login_required
+def delete_post(post_id):
+	post = Post.query.get_or_404(post_id)
+	if post.author != current_user:
+		abort(403)
+
+	try:
+		db.session.delete(post)
+		db.session.commit()
+	except Exception as e:
+		db.session.rollback()
+		flash(f'delete post error {e}', 'danger')
+	else:
+		flash(f'delete post success', 'success')
+	finally:
+		return redirect(url_for('index'))
