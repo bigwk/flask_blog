@@ -5,6 +5,9 @@
 ## 界面
 ### 主页
 ![main](./main.png)
+> 添加分页
+![paginate](./paginate.png)
+![paginate](./user_paginate.png)
 
 ### 修改头像
 ![update_img](./update_img.png)
