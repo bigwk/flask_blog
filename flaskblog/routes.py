@@ -10,30 +10,11 @@ from flaskblog.forms import RegistrationForm, LoginForm, UpdateAccountForm, Crea
 from flaskblog.models import User, Post
 from flaskblog import app, bcrypt, db
 
-post = [
-	{
-		'title': 'first post - 1',
-		'author': 'bigwk',
-		'date_posted': 'May 13, 2020',
-		'content': 'this is the first post'
-	},
-		{
-		'title': 'first post - 2',
-		'author': 'bigwk',
-		'date_posted': 'May 12, 2020',
-		'content': 'this is the second post'
-	},
-		{
-		'title': 'first post - 3',
-		'author': 'bigwk',
-		'date_posted': 'May 11, 2020',
-		'content': 'this is the third post'
-	}
-]
 
 @app.route('/')
 def index():
-	posts = Post.query.all()
+	page = request.args.get('page', 1, type=int)
+	posts = Post.query.order_by(Post.date_posted.desc()).paginate(page=page, per_page=2)
 	return render_template('home.html', posts=posts)
 
 @app.route('/about')
@@ -109,7 +90,7 @@ def del_img():
 		return False
 	else:
 		return True
-	
+
 
 @app.route('/account/<string:user_name>', methods=['GET', 'POST'])
 @login_required
@@ -140,6 +121,14 @@ def account(user_name):
 		form.email.data = current_user.email
 	image_file = url_for('static', filename='profile_pics/' + current_user.image_file)
 	return render_template('account.html', title=current_user.username, image_file=image_file, form=form)
+
+@app.route('/posts/<string:user_name>', methods=['GET', 'POST'])
+def user_posts(user_name):
+	user = User.query.filter_by(username=user_name).first_or_404()
+	page = request.args.get('page', 1, type=int)
+	posts = Post.query.filter_by(author=user).order_by(Post.date_posted.desc()).paginate(page=page, per_page=2)
+	# posts = Post.query.order_by(Post.date_posted.desc()).paginate(page=page, per_page=2)
+	return render_template('user_posts.html', posts=posts, user=user)
 
 
 @app.route('/post/new', methods=['GET', 'POST'])
