@@ -2,6 +2,10 @@
 
 另一个使用flask学习写的blog系统，上一个还没有完成，期待这一个首先写完。
 
+## update
+### 修改密码
+![reset_password](./reset_password.png)
+
 ## 界面
 ### 主页
 ![main](./main.png)
