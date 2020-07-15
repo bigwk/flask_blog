@@ -1,10 +1,14 @@
+# coding: utf-8
+# @Author   : wangkui
+# @Time     : 2020/07/15 13:32
+# @File     : forms
+# @Platform : VSCode
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, BooleanField, TextAreaField
+from wtforms import StringField, PasswordField, SubmitField, BooleanField
 from flask_wtf.file import FileField, FileAllowed
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
 from flask_login import current_user
 from flaskblog.models import User
-
 
 class RegistrationForm(FlaskForm):
 	"""docstring for RegistrationForm"""
@@ -53,12 +57,6 @@ class UpdateAccountForm(FlaskForm):
 			user = User.query.filter_by(email=email.data).first()
 			if user:
 				raise ValidationError('That email is taken. Please choose a different one.')
-
-class CreatePostForm(FlaskForm):
-	"""docstring for CreatePostForm"""
-	title = StringField('Title', validators=[DataRequired(), Length(min=1, max=50)])
-	content = TextAreaField('Content', validators=[DataRequired()])
-	submit = SubmitField('Submit')
 
 class ResetRequestEmailForm(FlaskForm):
 	email = StringField('Email', validators=[DataRequired(), Email()])
